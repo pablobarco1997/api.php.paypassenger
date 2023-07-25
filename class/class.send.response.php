@@ -16,7 +16,7 @@ class Response
         echo json_encode(array(
             'success' => $this->success,
             'error' => $this->error,
-            'data' => $this->data,
+            'response' => $this->data,
             'errorAlert' => $this->errorAlert
         ));
         die();

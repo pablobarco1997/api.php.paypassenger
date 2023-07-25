@@ -1,12 +1,11 @@
 <?php
 
 
-
 class db
 {
 
     /**
-       PASS REMOTO
+     * PASS REMOTO
      * USER: B07
      * PASS: 123
      * URL: ec2-52-15-181-14.us-east-2.compute.amazonaws.com
@@ -18,19 +17,20 @@ class db
     private $username = "";
     private $password = "";
 
-    public function __construct($servername = "", $namedb = "")
+    public function __construct($servername = "")
     {
         $userName = "root";
         $passName = "";
-        $this->DataBase = $namedb;
+        $this->DataBase = "sch_bus_payments";
         if (empty($servername) || $servername === "localhost") {
             //Localhost
-            $this->servername = $servername;
+            $this->servername = "localhost";
             $this->username = $userName;
             $this->password = $passName;
         } else {
             //Remoto
         }
+
     }
 
     public function tableInsertRow($name, $colunmValues = array())
@@ -64,7 +64,7 @@ class db
             }
             if (is_numeric($id)) {
                 $str = "UPDATE $name SET  " . implode(',', $_values) . " WHERE rowid = $id";
-//                print_r($str); die();
+                //print_r($str); die();
                 $res = $this->query($str);
                 if ($res === 1)
                     return true;
@@ -88,7 +88,7 @@ class db
     public function Count($tableJoin, $where = "")
     {
         $db = $this->open();
-        $str = "select count(*) as count_number $tableJoin $where";
+        $str = "select count(*) as count_number from $tableJoin $where";
         $object = $db->query($str);
         $db->close();
         if ($object && $object->num_rows > 0) {
@@ -125,21 +125,43 @@ class db
         $response = $db->query($query);
         if ($response && $response->num_rows > 0)
             $obj = $response->fetch_object();
-        else
+        else {
+            $db->close();
             return false;
+        }
         $db->close();
         return $obj;
     }
 
     private function open()
     {
+        require_once "class.send.response.php";
+        $response = new Response();
         $mysql = new mysqli($this->servername, $this->username, $this->password, $this->DataBase, 3306);
-        $mysql->set_charset("utf8");
+        if (!empty($mysql->connect_error)) {
+            $response->errorAlert = "Error de conexión con la base de datos ". $mysql->connect_error;
+            $response->send();
+            die();
+        } else
+            $mysql->set_charset("utf8");
         return $mysql;
     }
+
+    public function Token($token = "")
+    {
+        $db = $this->open();
+        $response = $db->query("SELECT count(*) as valid FROM bp_users_profile where concat(login,pass)  = '" . $token . "' ");
+        if ($response) {
+            if ($response->fetch_object()->valid != 0) {
+                $db->close();
+                return true;
+            }
+        } else {
+            $db->close();
+            return false;
+        }
+    }
 }
-
-
 
 
 ?>
