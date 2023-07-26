@@ -6,7 +6,7 @@ class Response
 {
     public $success;
     public $error;
-    public $data;
+    public $data = array();
     public $errorAlert;
 
 

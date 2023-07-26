@@ -50,7 +50,7 @@ class User
     //obtenego monto balance
     public function amountUser($id)
     {
-        $response = $this->db->fetchObject("select ifnull(sum(amount), 0) as amount from bp_transacciones where id_users = $id");
+        $response = $this->db->fetchObject("select ifnull(round(sum(amount), 2), 0) as amount from bp_transacciones where id_users = $id");
         return $response->amount;
     }
 

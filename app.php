@@ -21,8 +21,10 @@ $token = $requestData["token"];
 $accion = $requestData["accion"];
 $ServerHost = "localhost";
 
+
+//print_r($requestData); die();
 //se valida el token globalmente
-if ($accion !== "autentication") {
+if ($accion !== "autentication"  && (isset($requestData["signNew"]) && $requestData["signNew"] == false)) {
     $db = new db("localhost");
     $response = new Response();
     if (!$db->Token($token)) { //si el token es invalido
@@ -33,7 +35,6 @@ if ($accion !== "autentication") {
 }
 
 
-//print_r($requestData["accion"]); die();
 
 switch ($accion) {
 
@@ -43,11 +44,17 @@ switch ($accion) {
         $_user = $requestData["p_user"];
         $_pass = $requestData["p_pass"];
         $autentication = $db->Count("bp_users_profile", " where login = '$_user' and pass = '$_pass' ");
-        $fetch = $db->fetchArray("select * from bp_users_profile where login = '$_user' and pass = '$_pass' ");
+        $str = "select * from bp_users_profile where login = '$_user' and pass = '$_pass' ";
+        $fetch = $db->fetchArray($str);
         if ($autentication > 0) //true
         {
-            $response->success = 1;
-            $response->data = $fetch;
+            $UserObject = $db->fetchObject($str);
+            if($UserObject->estado === 'E'){
+                $response->errorAlert = "No puede iniciar sesión. Usuario ha sido eliminado";
+            }else{
+                $response->success = 1;
+                $response->data = $fetch;
+            }
         } else
             $response->errorAlert = "Usuario o contraseña invalida";
         $response->send();
@@ -351,7 +358,7 @@ switch ($accion) {
                 $address = 'Ruta ' . $transporte['line'];
 
                 //pasajero
-                $ope_p = $User->transaccionClient($fetchPasajero->rowid, "Pago $fetchPasajero->nom $fetchPasajero->tipo $address", (double)$AmountPayment*-1, $fetchTransporte->rowid, "U");
+                $ope_p = $User->transaccionClient($fetchPasajero->rowid, "Pago $fetchPasajero->nom $fetchPasajero->tipo $address", (double)$AmountPayment * -1, $fetchTransporte->rowid, "U");
                 //transporte
                 $ope_t = $User->transaccionClient($fetchTransporte->rowid, "Cobro $fetchPasajero->nom $fetchPasajero->tipo $address", $AmountPayment, $fetchPasajero->rowid, "T");
                 if ($ope_p && $ope_t) {
@@ -370,31 +377,144 @@ switch ($accion) {
             $response->send();
         }
 
-        
+
         $response->send();
 
         break;
 
     case "addCuentaBancaria":
 
-
         $db = new db($ServerHost);
         $response = new Response();
         $User = new User($db);
         $id = $requestData["id"];
+        $banco = $requestData['banco'];
+
+        //se valida si la informacion si encaso ya existe se actualiza la cuenta bancaria
+        $bank = $db->fetchObject("select * from bp_bank where id_user = $id and banco = '$banco' limit 1");
+        if ($bank) {
+            if ($bank->rowid > 0) {
+                $resul = $db->tableUpdateRow("bp_bank", array(
+                    array("n_account", $requestData['cuenta']),
+                    array("banco", $requestData['banco']),
+                    array("id_user", $id),
+                ), $bank->rowid);
+                if ($resul)
+                    $response->success = "ok";
+                else
+                    $response->errorAlert = "Ocurrrio un error con la operacion. Consulte con soporte";
+                $response->send();
+                return;
+                die();
+            }
+        }
 
         $resul = $db->tableInsertRow("bp_bank", array(
             array("n_account", $requestData['cuenta']),
             array("banco", $requestData['banco']),
             array("id_user", $id),
-
         ));
 
-        if($resul)
+        if ($resul)
             $response->success = "ok";
         else
             $response->errorAlert = "Ocurrrio un error con la operacion. Consulte con soporte";
 
+        $response->send();
+        break;
+
+    case "ListadoCuentas":
+
+        $db = new db($ServerHost);
+        $response = new Response();
+        $User = new User($db);
+        $id = $requestData["id"];
+        $resul = $db->fetchArray("select * from bp_bank where id_user = " . $id);
+        if ($resul) {
+            $response->data = $resul;
+        } else {
+            $response->errorAlert = "No se encontraron registros coincidentes";
+        }
+
+        $response->send();
+        break;
+
+    case  'bankProcess':
+
+        $db = new db($ServerHost);
+        $response = new Response();
+        $User = new User($db);
+        $id = $requestData["id"];
+        $idBank = $requestData["idBank"];
+
+        $CountProcess = $db->Count("bp_bank", "where id_user = $id and process = 1");
+        if($CountProcess){
+            $response->errorAlert = "Espere un momento porfavor...";
+            $response->send();
+            die();
+        }
+
+        $resul = $db->fetchObject("select * from bp_bank where rowid = " . $idBank . " and id_user = " . $id);
+        if ($resul->rowid) {
+            if ($resul->rowid && $resul->process == 0) {
+                //processo retiro de dinero
+                //se genera una trasaccion de retiro
+                $amount = (double)$User->amountUser($id);
+                if ($amount > 0) { //verificar el saldo a retirar
+                    if ($amount >= 10) {
+                        $value = $User->transaccionClient($id, "Transferencia de fondos " . $resul->banco, $amount * -1, 0, "R");
+                        if ($value) {
+                            sleep(3);
+                            //processo terminado
+                            $db->tableUpdateRow("bp_bank", array(
+                                array("process", 0)
+                            ), $idBank);
+                            $response->success = "ok";
+                            $response->send();
+                            return;
+                        }
+                    } else {
+                        sleep(3);
+                        $response->errorAlert = "Lo sentimos, no podemos procesar su transacción debido a que el monto a debe ser mayor a $10";
+                        $response->send();
+                        return;
+                    }
+                } else {
+                    sleep(3);
+                    $response->errorAlert = "Lo sentimos, no podemos procesar su transacción debido a que el monto a depositar no puede ser 0";
+                    $response->send();
+                    return;
+                }
+
+            } else {
+                if ($resul->process === 1) {
+                    $response->errorAlert = "Su transacción esta siendo procesada";
+                    $response->send();
+                    return;
+                }
+            }
+            return;
+        } else {
+            $response->errorAlert = "Banco selecionado no existe";
+            $response->send();
+            return;
+        }
+
+        $response->errorAlert = "Ocurrio un error con la operaciòn. Consulte con soporte";
+        $response->send();
+        break;
+
+    case  'ConsultarbankProcess':
+        $db = new db($ServerHost);
+        $response = new Response();
+        $User = new User($db);
+        $id = $requestData["id"];
+        $resul = $db->Count("bp_bank", "where id_user = $id and process = 1");
+        if ($resul) {
+            $response->success = "ok";
+        } else {
+
+        }
         $response->send();
         break;
 
