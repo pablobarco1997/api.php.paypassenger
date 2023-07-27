@@ -21,7 +21,7 @@ class db
         $userName = "root";
         $passName = "";
         $this->DataBase = "sch_bus_payments";
-        if (empty($servername) || $servername === "localhost" && $_SERVER["SERVER_NAME"] == 'ec2-52-15-181-14.us-east-2.compute.amazonaws.com') {
+        if ( $servername === "localhost" && $_SERVER["SERVER_NAME"] != 'ec2-52-15-181-14.us-east-2.compute.amazonaws.com') {
             //Localhost
             $this->servername = "localhost";
             $this->username = $userName;

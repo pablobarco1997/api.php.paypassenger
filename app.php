@@ -15,6 +15,7 @@ if (!isset($requestData['accion'])) {
     $response = new Response();
     $response->errorAlert = "No se proporcionó la acción requerida.";
     $response->send();
+    die();
 }
 
 
@@ -24,7 +25,7 @@ $ServerHost = "localhost";
 
 
 
-if(access_app() === false){
+if(_Access() == false){
     $response = new Response();
     $response->errorAlert = "UD no puede acceder a ninguno de los módulos, por favor contactarse con soporte";
     $response->send();
@@ -535,7 +536,11 @@ switch ($accion) {
 
 
 
-
+function _Access(){
+    $db = new db("localhost");
+    $acc = new  Access($db);
+    return $acc->verify();
+}
 
 die();
 
