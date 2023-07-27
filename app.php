@@ -4,6 +4,7 @@
 require_once "class/class.connection.php";
 require_once "class/class.send.response.php";
 require_once "class/class.user.php";
+require_once "controller/access.php";
 
 header('Content-Type: application/json');
 
@@ -22,10 +23,21 @@ $accion = $requestData["accion"];
 $ServerHost = "localhost";
 
 
+
+if(access_app() === false){
+    $response = new Response();
+    $response->errorAlert = "UD no puede acceder a ninguno de los módulos, por favor contactarse con soporte";
+    $response->send();
+    return false;
+
+}
+
+
+
 //print_r($requestData); die();
 //se valida el token globalmente
 if ($accion !== "autentication"  && (isset($requestData["signNew"]) && $requestData["signNew"] == false)) {
-    $db = new db("localhost");
+    $db = new db($ServerHost);
     $response = new Response();
     if (!$db->Token($token)) { //si el token es invalido
         $response->errorAlert = "Token invalido Inicie Session de nuevo";
@@ -33,6 +45,7 @@ if ($accion !== "autentication"  && (isset($requestData["signNew"]) && $requestD
         return;
     }
 }
+
 
 
 
@@ -519,6 +532,9 @@ switch ($accion) {
         break;
 
 }
+
+
+
 
 
 die();
