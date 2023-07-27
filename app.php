@@ -112,7 +112,7 @@ switch ($accion) {
             else
                 $type = "";
 
-            $datosTransacciones = $User->TransaccionesList($id, $type);
+            $datosTransacciones = $User->TransaccionesList($idParents, $type);
             $response->data = $datosTransacciones;
             $response->success = 'ok';
         } else {
