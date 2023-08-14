@@ -11,13 +11,6 @@ header('Content-Type: application/json');
 $requestData = $_POST;
 
 
-if (1===1) {
-    $response = new Response();
-    $response->errorAlert = "Error de acceso";
-    $response->send();
-    die();
-}
-
 
 
 if (!isset($requestData['accion'])) {
