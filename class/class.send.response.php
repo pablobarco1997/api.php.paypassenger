@@ -4,10 +4,10 @@
 
 class Response
 {
-    public $success;
-    public $error;
+    public $success = "";
+    public $error = "";
     public $data = array();
-    public $errorAlert;
+    public $errorAlert = "";
 
 
     public function send()
