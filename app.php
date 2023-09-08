@@ -12,7 +12,6 @@ $requestData = $_POST;
 
 
 
-
 if (!isset($requestData['accion'])) {
     $response = new Response();
     $response->errorAlert = "No se proporcionó la acción requerida.";
@@ -21,8 +20,8 @@ if (!isset($requestData['accion'])) {
 }
 
 
-$token = $requestData["token"];
-$accion = $requestData["accion"];
+$token = !isset($requestData["token"]) ? "" : $requestData["token"];
+$accion = !isset($requestData["accion"]) ? "" : $requestData["accion"];
 $ServerHost = "localhost";
 
 
@@ -37,8 +36,7 @@ if(_Access() == false){
 
 
 
-//print_r($requestData); die();
-//se valida el token globalmente
+ //se valida el token globalmente
 if ($accion !== "autentication"  && (isset($requestData["signNew"]) && $requestData["signNew"] == false)) {
     $db = new db($ServerHost);
     $response = new Response();
@@ -62,6 +60,7 @@ switch ($accion) {
         $autentication = $db->Count("bp_users_profile", " where login = '$_user' and pass = '$_pass' ");
         $str = "select * from bp_users_profile where login = '$_user' and pass = '$_pass' ";
         $fetch = $db->fetchArray($str);
+
         if ($autentication > 0) //true
         {
             $UserObject = $db->fetchObject($str);
@@ -78,6 +77,7 @@ switch ($accion) {
 
 
     case "AmountBalance":
+
         $db = new db($ServerHost);
         $response = new Response();
         $User = new User($db);
@@ -139,7 +139,6 @@ switch ($accion) {
         $ope = $requestData['ope'];
         $datos = $requestData['datos'];
 
-        //print_r($requestData); die();
 
         if ($ope === 'update') {
 
@@ -148,8 +147,10 @@ switch ($accion) {
                 $column[] = array($key, $value);
             }
             $value = $db->tableUpdateRow("bp_users_profile", $column, $id);
-            if ($value)
+            if ($value){
                 $response->success = "ok";
+                $response->data = $User->fetch($id);
+            }
             else
                 $response->errorAlert = "Ocurrio un error con la operacion " . $ope;
         }
@@ -159,7 +160,7 @@ switch ($accion) {
             $login = $datos['login'];
             $exist = $User->exitsUser($login);
 
-            if ($exist === $login) {
+            if ($exist == $login) {
                 $response->errorAlert = "usuario ya existe";
                 $response->send();
                 return;
@@ -169,6 +170,7 @@ switch ($accion) {
             foreach ($datos as $key => $value) {
                 $column[] = array($key, $value);
             }
+
             $value = $db->tableInsertRow("bp_users_profile", $column);
             if ($value)
                 $response->success = "ok";
@@ -356,7 +358,7 @@ switch ($accion) {
             return false;
         }
 
-        $fetchPasajero = $User->fetch($idusers); //obtengo los datos del pasajero
+        $fetchPasajero = $User->fetch($id); //obtengo los datos del pasajero sea hijo o padre
         $fetchTransporte = $User->fetch($transporte['id']); //obtengo los datos del transportista
 
         //Tarifas
@@ -364,7 +366,7 @@ switch ($accion) {
             $AmountPayment = 0.30;
         if ($fetchPasajero->tipo === 'Estudiante' || $fetchPasajero->tipo === 'Tercera Edad' || $fetchPasajero->tipo === 'Discapacidad')
             $AmountPayment = 0.15;
-        if (empty($fetchPasajero->tipo) || $fetch->tipo == null)
+        if (empty($fetchPasajero->tipo) || $fetchPasajero->tipo == null)
             $AmountPayment = 0.30;
 
         $Mycupo = (double)$User->amountUser($idusers);
@@ -373,8 +375,8 @@ switch ($accion) {
                 //cupo
                 $address = 'Ruta ' . $transporte['line'];
 
-                //pasajero
-                $ope_p = $User->transaccionClient($fetchPasajero->rowid, "Pago $fetchPasajero->nom $fetchPasajero->tipo $address", (double)$AmountPayment * -1, $fetchTransporte->rowid, "U");
+                //pasajero si la cuenta es hijo el saldo se toma de la cuenta padre la cuenta hijo es solo informativa no almacena saldo
+                $ope_p = $User->transaccionClient($idusers, "Pago $fetchPasajero->nom $fetchPasajero->tipo $address", (double)$AmountPayment * -1, $fetchTransporte->rowid, "U");
                 //transporte
                 $ope_t = $User->transaccionClient($fetchTransporte->rowid, "Cobro $fetchPasajero->nom $fetchPasajero->tipo $address", $AmountPayment, $fetchPasajero->rowid, "T");
                 if ($ope_p && $ope_t) {
