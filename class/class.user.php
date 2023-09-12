@@ -68,7 +68,7 @@ class User
     public function existTrajetaCredDeb($id)
     {
         $response = $this->db->fetchObject("select count(*) as exits from bp_card_cd  where id_users = $id; ");
-        return $response->exits === 0 ? false : true;
+        return $response->exits == 0 ? false : true;
     }
 
     public function exitsUser($login)

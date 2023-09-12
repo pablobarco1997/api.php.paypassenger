@@ -234,7 +234,7 @@ switch ($accion) {
             }
             $value = $db->tableUpdateRow("bp_card_cd", $column, $idrow);
             if (!$value) {
-                $response->errorAlert = 'ocurrio un error con la operacion crear';
+                $response->errorAlert = 'ocurrio un error con la operacion actualizar';
             } else {
                 $response->success = "ok";
             }
